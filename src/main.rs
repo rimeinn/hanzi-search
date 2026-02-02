@@ -1,8 +1,8 @@
-use anyhow::bail;
 use structopt::StructOpt;
-use crate::ids::{IDSTable, parse};
+use hanzi_search::{ids::IDSTable, search_find, search_match, search_pmatch};
 
-mod ids;
+// Embed the data file into the binary
+const CHAI_DATA: &str = include_str!("../chai.txt");
 
 #[derive(StructOpt, Debug)]
 #[structopt(name = "hanzi-search")]
@@ -24,72 +24,31 @@ enum Command {
     },
 }
 
-const WILDCARD_CHAR: char = '.';
-
 fn main() -> anyhow::Result<()> {
     env_logger::init();
     let opt = Opt::from_args();
-    let table = IDSTable::load_file("chai.txt")?;
+    let table = IDSTable::load_from_string(CHAI_DATA)?;
+
     match opt.cmd {
-        Command::Find { needles: needle_strs } => {
-            let needles = {
-                let mut needles = vec![];
-                for needle_str in needle_strs {
-                    let Ok(needle) = parse(&needle_str) else {
-                        bail!("Cannot parse needle {}", needle_str);
-                    };
-                    needles.push(needle);
-                }
-                needles
-            };
-            let mut result: Vec<_> = table.iter()
-                .filter_map(|(k, tagged_ids)| {
-                    if needles.iter().all(|needle| table.ids_has_subcomponent(&tagged_ids.ids, &needle.ids)) {
-                        Some(k)
-                    } else {
-                        None
-                    }
-                })
-                .collect();
-            result.sort();
+        Command::Find { needles } => {
+            let result = search_find(&table, &needles)
+                .map_err(|e| anyhow::anyhow!(e))?;
             for k in result {
                 println!("{}", k);
             }
         }
 
         Command::Match { pattern } => {
-            let Ok(pattern) = parse(&pattern) else {
-                bail!("Cannot parse pattern {}", pattern);
-            };
-            let mut result: Vec<_> = table.iter()
-                .filter_map(|(k, tagged_ids)| {
-                    if table.ids_match(&tagged_ids.ids, &pattern.ids, WILDCARD_CHAR) {
-                        Some(k)
-                    } else {
-                        None
-                    }
-                })
-                .collect();
-            result.sort();
+            let result = search_match(&table, &pattern)
+                .map_err(|e| anyhow::anyhow!(e))?;
             for k in result {
                 println!("{}", k);
             }
         }
 
         Command::Pmatch { pattern } => {
-            let Ok(pattern) = parse(&pattern) else {
-                bail!("Cannot parse pattern {}", pattern);
-            };
-            let mut result: Vec<_> = table.iter()
-                .filter_map(|(k, tagged_ids)| {
-                    if table.ids_has_matching_subcomponent(&tagged_ids.ids, &pattern.ids, WILDCARD_CHAR) {
-                        Some(k)
-                    } else {
-                        None
-                    }
-                })
-                .collect();
-            result.sort();
+            let result = search_pmatch(&table, &pattern)
+                .map_err(|e| anyhow::anyhow!(e))?;
             for k in result {
                 println!("{}", k);
             }

@@ -80,6 +80,27 @@ impl IDSTable {
         Ok(IDSTable { table })
     }
 
+    pub fn load_from_string(content: &str) -> io::Result<IDSTable> {
+        let mut table = HashMap::new();
+        for line in content.lines() {
+            let parts = line.split_whitespace().collect::<Vec<_>>();
+            if parts.len() < 3 {
+                continue;
+            }
+            let Some(char) = parts[1].chars().next() else {
+                continue;
+            };
+            if table.contains_key(&char) {
+                continue;
+            }
+            let Ok(ids) = parse(parts[2]) else {
+                continue;
+            };
+            table.insert(char, ids);
+        }
+        Ok(IDSTable { table })
+    }
+
     pub fn ids_match(&self, a: &IDS, b: &IDS, wildcard_k: char) -> bool {
         use IDS::*;
         match (a, b) {
