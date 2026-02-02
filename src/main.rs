@@ -42,7 +42,7 @@ fn main() -> anyhow::Result<()> {
                 }
                 needles
             };
-            let result: Vec<_> = table.iter()
+            let mut result: Vec<_> = table.iter()
                 .filter_map(|(k, tagged_ids)| {
                     if needles.iter().all(|needle| table.ids_has_subcomponent(&tagged_ids.ids, &needle.ids)) {
                         Some(k)
@@ -51,6 +51,7 @@ fn main() -> anyhow::Result<()> {
                     }
                 })
                 .collect();
+            result.sort();
             for k in result {
                 println!("{}", k);
             }
@@ -60,7 +61,7 @@ fn main() -> anyhow::Result<()> {
             let Ok(pattern) = parse(&pattern) else {
                 bail!("Cannot parse pattern {}", pattern);
             };
-            let result: Vec<_> = table.iter()
+            let mut result: Vec<_> = table.iter()
                 .filter_map(|(k, tagged_ids)| {
                     if table.ids_match(&tagged_ids.ids, &pattern.ids, WILDCARD_CHAR) {
                         Some(k)
@@ -69,6 +70,7 @@ fn main() -> anyhow::Result<()> {
                     }
                 })
                 .collect();
+            result.sort();
             for k in result {
                 println!("{}", k);
             }
@@ -78,7 +80,7 @@ fn main() -> anyhow::Result<()> {
             let Ok(pattern) = parse(&pattern) else {
                 bail!("Cannot parse pattern {}", pattern);
             };
-            let result: Vec<_> = table.iter()
+            let mut result: Vec<_> = table.iter()
                 .filter_map(|(k, tagged_ids)| {
                     if table.ids_has_matching_subcomponent(&tagged_ids.ids, &pattern.ids, WILDCARD_CHAR) {
                         Some(k)
@@ -87,6 +89,7 @@ fn main() -> anyhow::Result<()> {
                     }
                 })
                 .collect();
+            result.sort();
             for k in result {
                 println!("{}", k);
             }
