@@ -15,12 +15,18 @@ struct Opt {
 enum Command {
     Find {
         needles: Vec<String>,
+    },
+    Match {
+        pattern: String,
     }
 }
+
+const WILDCARD_CHAR: char = '.';
 
 fn main() -> anyhow::Result<()> {
     env_logger::init();
     let opt = Opt::from_args();
+    let table = IDSTable::load_file("chai.txt")?;
     match opt.cmd {
         Command::Find { needles: needle_strs } => {
             let needles = {
@@ -33,10 +39,27 @@ fn main() -> anyhow::Result<()> {
                 }
                 needles
             };
-            let table = IDSTable::load_file("chai.txt")?;
             let result: Vec<_> = table.iter()
                 .filter_map(|(k, tagged_ids)| {
                     if needles.iter().all(|needle| table.ids_has_subcomponent(&tagged_ids.ids, &needle.ids)) {
+                        Some(k)
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+            for k in result {
+                println!("{}", k);
+            }
+        }
+
+        Command::Match { pattern } => {
+            let Ok(pattern) = parse(&pattern) else {
+                bail!("Cannot parse pattern {}", pattern);
+            };
+            let result: Vec<_> = table.iter()
+                .filter_map(|(k, tagged_ids)| {
+                    if table.ids_match(&tagged_ids.ids, &pattern.ids, WILDCARD_CHAR) {
                         Some(k)
                     } else {
                         None

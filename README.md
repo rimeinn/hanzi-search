@@ -21,3 +21,22 @@ $ ./target/release/hanzi-search find 號 食
 $ ./target/release/hanzi-search find ⿰号虎 食
 饕
 ```
+
+## match：模式匹配
+
+```
+cargo run --release -- match 模式
+```
+
+模式是 IDS，但其中的 `.` 可以用於匹配任何字符。例如：
+
+```
+$ cargo run -r -q --  match ⿲吕.吕
+嘂
+嚻
+𡅽
+𡂨
+𫬽
+```
+
+該命令只能用於全字匹配，不能匹配字中的子部件。

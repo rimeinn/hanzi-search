@@ -80,6 +80,23 @@ impl IDSTable {
         Ok(IDSTable { table })
     }
 
+    pub fn ids_match(&self, a: &IDS, b: &IDS, wildcard_k: char) -> bool {
+        use IDS::*;
+        match (a, b) {
+            (Special(a), Special(b)) => a == b,
+            (Char(a), Char(b)) => a == &wildcard_k || b == &wildcard_k || a == b,
+            (Composition { idc: xc, children: xs, .. }, Composition { idc: yc, children: ys, .. }) if xc == yc && xs.len() == ys.len() => {
+                for (x, y) in xs.iter().zip(ys.iter())  {
+                    if !self.ids_match(x, y, '.') {
+                        return false;
+                    }
+                }
+                true
+            }
+            _ => false,
+        }
+    }
+
     pub fn ids_has_subcomponent(&self, haystack: &IDS, needle: &IDS) -> bool {
         debug!("has_subcomponent haystack={:?} needle={:?}", haystack, needle);
         if haystack == needle {
