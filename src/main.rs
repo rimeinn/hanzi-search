@@ -18,7 +18,10 @@ enum Command {
     },
     Match {
         pattern: String,
-    }
+    },
+    Pmatch {
+        pattern: String,
+    },
 }
 
 const WILDCARD_CHAR: char = '.';
@@ -60,6 +63,24 @@ fn main() -> anyhow::Result<()> {
             let result: Vec<_> = table.iter()
                 .filter_map(|(k, tagged_ids)| {
                     if table.ids_match(&tagged_ids.ids, &pattern.ids, WILDCARD_CHAR) {
+                        Some(k)
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+            for k in result {
+                println!("{}", k);
+            }
+        }
+
+        Command::Pmatch { pattern } => {
+            let Ok(pattern) = parse(&pattern) else {
+                bail!("Cannot parse pattern {}", pattern);
+            };
+            let result: Vec<_> = table.iter()
+                .filter_map(|(k, tagged_ids)| {
+                    if table.ids_has_matching_subcomponent(&tagged_ids.ids, &pattern.ids, WILDCARD_CHAR) {
                         Some(k)
                     } else {
                         None

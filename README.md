@@ -22,7 +22,7 @@ $ ./target/release/hanzi-search find ⿰号虎 食
 饕
 ```
 
-## match：模式匹配
+## match：全字模式匹配
 
 ```
 cargo run --release -- match 模式
@@ -40,3 +40,22 @@ $ cargo run -r -q --  match ⿲吕.吕
 ```
 
 該命令只能用於全字匹配，不能匹配字中的子部件。
+
+## pmatch：部分模式匹配
+
+```
+cargo run --release -- pmatch 模式
+```
+
+用法同上，但可以用於匹配一個字中的部分組件。例如：
+
+```
+$ cargo run -r -q --  pmatch ⿲木.木
+𧢣
+𰙈
+𣡨
+𩕒
+欎
+𬰸
+<...其餘輸出省略...>
+```

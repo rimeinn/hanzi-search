@@ -97,6 +97,50 @@ impl IDSTable {
         }
     }
 
+    pub fn ids_has_matching_subcomponent(&self, a: &IDS, b: &IDS, wildcard_k: char) -> bool {
+        use IDS::*;
+        if a == b {
+            return true;
+        }
+        match (a, b) {
+            (Special(a), Special(b)) => a == b,
+            (Special(_), _) => false,
+            (Char(a), Char(b)) => a == &wildcard_k || b == &wildcard_k || a == b,
+            (Char(_), Special(_)) => false,
+            (Char(a), Composition { .. }) => {
+                let Some(a_components) = self.table.get(a) else {
+                    return false
+                };
+                if let TaggedIDS { ids: IDS::Char(a_char), .. } = a_components {
+                    if a_char == a {
+                        return false;
+                    }
+                }
+                self.ids_has_matching_subcomponent(&a_components.ids, b, wildcard_k)
+            }
+            (Composition { idc: xc, children: xs, .. }, b) => {
+                // Children match
+                for x in xs {
+                    if self.ids_has_matching_subcomponent(x, b, wildcard_k) {
+                        return true;
+                    }
+                }
+                // Structural match
+                if let IDS::Composition { idc: yc, children: ys } = b {
+                    if xc == yc && xs.len() == ys.len() {
+                        for (x, y) in xs.iter().zip(ys.iter()) {
+                            if !self.ids_match(x, y, wildcard_k) {
+                                return false;
+                            }
+                        }
+                        return true;
+                    }
+                }
+                false
+            }
+        }
+    }
+
     pub fn ids_has_subcomponent(&self, haystack: &IDS, needle: &IDS) -> bool {
         debug!("has_subcomponent haystack={:?} needle={:?}", haystack, needle);
         if haystack == needle {
