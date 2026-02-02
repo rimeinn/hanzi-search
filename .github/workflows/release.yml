@@ -1,0 +1,82 @@
+name: Build and Release WASM
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Install wasm-pack
+        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+
+      - name: Build WASM
+        run: wasm-pack build --target web --release
+
+      - name: Create tarball
+        run: |
+          mkdir -p release
+          tar -czf release/hanzi-search-wasm.tar.gz pkg/ index.html
+
+      - name: Get short SHA
+        id: sha
+        run: echo "short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+      - name: Delete existing latest release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Delete the release if it exists
+          gh release delete latest --yes || true
+          # Delete the tag if it exists
+          git push --delete origin latest || true
+        continue-on-error: true
+
+      - name: Create latest pre-release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create latest \
+            --title "Latest Build" \
+            --notes "Automated build from commit ${{ steps.sha.outputs.short }}
+
+          ## Usage
+
+          1. Download and extract the tarball:
+             \`\`\`bash
+             tar -xzf hanzi-search-wasm.tar.gz
+             \`\`\`
+
+          2. Serve the files with a local web server:
+             \`\`\`bash
+             python3 -m http.server 8000
+             \`\`\`
+
+          3. Open http://localhost:8000 in your browser
+
+          ---
+          Built from: ${{ github.sha }}" \
+            --prerelease \
+            release/hanzi-search-wasm.tar.gz
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: hanzi-search-wasm
+          path: release/hanzi-search-wasm.tar.gz
+          retention-days: 7
