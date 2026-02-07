@@ -33,24 +33,24 @@ fn main() -> anyhow::Result<()> {
         Command::Find { needles } => {
             let result = search_find(&table, &needles)
                 .map_err(|e| anyhow::anyhow!(e))?;
-            for k in result {
-                println!("{}", k);
+            for (k, t) in result {
+                println!("{} {}", k, t);
             }
         }
 
         Command::Match { pattern } => {
             let result = search_match(&table, &pattern)
                 .map_err(|e| anyhow::anyhow!(e))?;
-            for k in result {
-                println!("{}", k);
+            for (k, t) in result {
+                println!("{} {}", k, t);
             }
         }
 
         Command::Pmatch { pattern } => {
             let result = search_pmatch(&table, &pattern)
                 .map_err(|e| anyhow::anyhow!(e))?;
-            for k in result {
-                println!("{}", k);
+            for (k, t) in result {
+                println!("{} {}", k, t);
             }
         }
     }

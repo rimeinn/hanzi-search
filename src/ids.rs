@@ -93,19 +93,42 @@ impl std::fmt::Display for IDS {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TaggedIDS {
     pub ids: IDS,
-    pub tag: String,
+    pub tag: Tag,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Ord, PartialOrd)]
+pub enum Tag {
+    Variant(String),
+    Anon(usize),
+}
+
+impl std::fmt::Display for Tag {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Tag::Variant(s) => write!(f, "{}", s),
+            Tag::Anon(_) => Ok(()),
+        }
+    }
+}
+
+impl From<String> for Tag {
+    fn from(val: String) -> Tag {
+        Tag::Variant(val)
+    }
 }
 
 #[derive(Default, Debug, Clone)]
 pub struct IDSTable {
-    table: HashMap<char, TaggedIDS>,
+    table: HashMap<(char, Tag), IDS>,
+    tags: HashMap<char, Vec<Tag>>,
 }
 
 impl IDSTable {
     pub fn load_file<P: AsRef<Path>>(path: P) -> io::Result<IDSTable> {
         let file = File::open(path)?;
         let reader = BufReader::new(file);
-        let mut table = HashMap::new();
+        let mut table: HashMap<(char, Tag), IDS> = HashMap::new();
+        let mut tags: HashMap<char, Vec<Tag>> = HashMap::new();
         for (_i, line) in reader.lines().enumerate() {
             let line = line.expect("valid line");
             let parts = line.split_whitespace().collect::<Vec<_>>();
@@ -113,22 +136,34 @@ impl IDSTable {
                 warn!("Malformed line {}", line);
                 continue;
             };
-            if table.contains_key(&char) {
-                warn!("Duplicated key {} ignored", char);
-                continue;
+            for ids_str in parts.iter().skip(2) {
+                let Ok(tids) = parse_tagged(ids_str) else {
+                    warn!("Cannot parse IDS on line {}", line);
+                    continue;
+                };
+                let key = (char, tids.tag.clone());
+                if table.contains_key(&key) {
+                    let tag = Tag::Anon(tags.get(&char).unwrap().len());
+                    let key = (char, tag.clone());
+                    table.insert(key, tids.ids);
+                    tags.entry(char)
+                        .and_modify(|v| v.push(tag.clone()))
+                        .or_insert_with(|| vec![tag.clone()]);
+                } else {
+                    tags.entry(char).and_modify(|v| v.push(tids.tag.clone())).or_insert(vec![tids.tag.clone()]);
+                    table.insert(key, tids.ids);
+                }
             }
-            let Ok(ids) = parse(parts[2]) else {
-                warn!("Cannot parse IDS on line {}", line);
-                continue;
-            };
-            // debug!("{} -> {:?}", char, ids);
-            table.insert(char, ids);
         }
-        Ok(IDSTable { table })
+        Ok(IDSTable {
+            table,
+            tags,
+        })
     }
 
     pub fn load_from_string(content: &str) -> io::Result<IDSTable> {
         let mut table = HashMap::new();
+        let mut tags: HashMap<char, Vec<Tag>> = HashMap::new();
         for line in content.lines() {
             let parts = line.split_whitespace().collect::<Vec<_>>();
             if parts.len() < 3 {
@@ -137,15 +172,26 @@ impl IDSTable {
             let Some(char) = parts[1].chars().next() else {
                 continue;
             };
-            if table.contains_key(&char) {
-                continue;
+            for ids_str in parts.iter().skip(2) {
+                let Ok(tids) = parse_tagged(ids_str) else {
+                    warn!("Cannot parse IDS on line {}", line);
+                    continue;
+                };
+                let key = (char, tids.tag.clone());
+                if table.contains_key(&key) {
+                    let tag = Tag::Anon(tags.get(&char).unwrap().len());
+                    let key = (char, tag.clone());
+                    table.insert(key, tids.ids);
+                    tags.entry(char)
+                        .and_modify(|v| v.push(tag.clone()))
+                        .or_insert_with(|| vec![tag.clone()]);
+                } else {
+                    tags.entry(char).and_modify(|v| v.push(tids.tag.clone())).or_insert(vec![tids.tag.clone()]);
+                    table.insert(key, tids.ids);
+                }
             }
-            let Ok(ids) = parse(parts[2]) else {
-                continue;
-            };
-            table.insert(char, ids);
         }
-        Ok(IDSTable { table })
+        Ok(IDSTable { table, tags })
     }
 
     pub fn ids_match(&self, a: &IDS, b: &IDS, wildcard_k: char) -> bool {
@@ -156,9 +202,14 @@ impl IDSTable {
             (Special(a), Special(b)) => a == b,
             (Char(a), Char(b)) => a == b,
             (Char(k), Composition { .. }) => {
-                if let Some(k_components) = self.table.get(k) {
-                    if k_components.ids != IDS::Char(*k) {
-                        return self.ids_match(&k_components.ids, b, wildcard_k);
+                let Some(k_tags) = self.tags.get(k) else {
+                    return false;
+                };
+                for k_tag in k_tags {
+                    if let Some(k_components) = self.table.get(&(*k, k_tag.clone())) {
+                        if k_components != &IDS::Char(*k) {
+                            return self.ids_match(k_components, b, wildcard_k);
+                        }
                     }
                 }
                 false
@@ -207,13 +258,17 @@ impl IDSTable {
             (Char(a), Char(b)) => a == b,
             (Char(_), Special(_)) => false,
             (Char(a), Composition { .. }) => {
-                let Some(a_components) = self.table.get(a) else {
-                    return false
-                };
-                if a_components.ids == IDS::Char(*a) {
+                let Some(a_tags) = self.tags.get(a) else {
                     return false;
+                };
+                for a_tag in a_tags {
+                    if let Some(a_components) = self.table.get(&(*a, a_tag.clone())) {
+                        if a_components != &IDS::Char(*a) {
+                            return self.ids_has_matching_subcomponent(a_components, b, wildcard_k);
+                        }
+                    }
                 }
-                self.ids_has_matching_subcomponent(&a_components.ids, b, wildcard_k)
+                false
             }
             (Composition { children: xs, .. }, b) => {
                 for x in xs {
@@ -236,18 +291,21 @@ impl IDSTable {
             (Special(a), Special(b)) => a == b,
             (Special(_), _) => false,
             (Char(a), Char(b)) if a == b => true,
-            (Char(a), Char(b)) if a != b && !self.table.contains_key(a) => false,
+            (Char(a), Char(b)) if a != b && !self.tags.contains_key(a) => false,
             (Char(a), _) => {
-                let Some(a_components) = self.table.get(a) else {
+                let Some(tags) = self.tags.get(a) else {
                     return false;
                 };
-                // Avoid circular definition.
-                match (&a_components.ids, needle) {
-                    (Char(a), Char(b)) => return a == b,
-                    (Char(_), _) => return false,
-                    _ => {},
+                for tag in tags {
+                    if let Some(a_components) = self.table.get(&(*a, tag.clone())) {
+                        if a_components != &IDS::Char(*a) {
+                            if self.ids_has_subcomponent(a_components, needle) {
+                                return true;
+                            }
+                        }
+                    }
                 }
-                self.ids_has_subcomponent(&a_components.ids, needle)
+                false
             },
             (Composition { children, .. }, _) => {
                 for c in children {
@@ -265,7 +323,7 @@ impl IDSTable {
         self.ids_has_subcomponent(&ids, needle)
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = (&char, &TaggedIDS)> {
+    pub fn iter(&self) -> impl Iterator<Item = (&(char, Tag), &IDS)> {
         self.table.iter()
     }
 }
@@ -314,12 +372,20 @@ fn parser_tagged_ids(input: &str) -> IResult<&str, TaggedIDS> {
     (parser_ids, opt(parser_tag), eof)
         .map(|(ids, tag, _)| TaggedIDS {
             ids,
-            tag: tag.unwrap_or_default(),
+            tag: Tag::Variant(tag.unwrap_or_default()),
         })
         .parse(input)
 }
 
-pub fn parse(input: &str) -> Result<TaggedIDS, String> {
+pub fn parse(input: &str) -> Result<IDS, String> {
+    match parser_ids(input).finish() {
+        Ok((input, ids)) if input.is_empty() => Ok(ids),
+        Ok(_) => Err("Input is not parsed completely".to_string()),
+        Err(e) => Err(e.to_string())
+    }
+}
+
+pub fn parse_tagged(input: &str) -> Result<TaggedIDS, String> {
     match parser_tagged_ids(input).finish() {
         Ok((input, tids)) if input.is_empty() => Ok(tids),
         Ok(_) => Err("Input is not parsed completely".to_string()),

@@ -1,12 +1,12 @@
 pub mod ids;
 
-use ids::{IDSTable, parse};
+use ids::{IDSTable, Tag, parse};
 
 const WILDCARD_CHAR: char = '.';
 
 // Shared search functions used by both CLI and WASM
 
-pub fn search_find(table: &IDSTable, needle_strs: &[String]) -> Result<Vec<char>, String> {
+pub fn search_find(table: &IDSTable, needle_strs: &[String]) -> Result<Vec<(char, Tag)>, String> {
     let needles = {
         let mut needles = vec![];
         for needle_str in needle_strs {
@@ -17,10 +17,10 @@ pub fn search_find(table: &IDSTable, needle_strs: &[String]) -> Result<Vec<char>
         needles
     };
 
-    let mut result: Vec<_> = table.iter()
-        .filter_map(|(k, tagged_ids)| {
-            if needles.iter().all(|needle| table.ids_has_subcomponent(&tagged_ids.ids, &needle.ids)) {
-                Some(*k)
+    let mut result: Vec<(char, Tag)> = table.iter()
+        .filter_map(|((k, t), ids)| {
+            if needles.iter().all(|needle| table.ids_has_subcomponent(&ids, &needle)) {
+                Some((*k, t.clone()))
             } else {
                 None
             }
@@ -30,14 +30,14 @@ pub fn search_find(table: &IDSTable, needle_strs: &[String]) -> Result<Vec<char>
     Ok(result)
 }
 
-pub fn search_match(table: &IDSTable, pattern_str: &str) -> Result<Vec<char>, String> {
+pub fn search_match(table: &IDSTable, pattern_str: &str) -> Result<Vec<(char, Tag)>, String> {
     let pattern = parse(pattern_str)
         .map_err(|_| format!("Cannot parse pattern {}", pattern_str))?;
 
-    let mut result: Vec<_> = table.iter()
-        .filter_map(|(k, tagged_ids)| {
-            if table.ids_match(&tagged_ids.ids, &pattern.ids, WILDCARD_CHAR) {
-                Some(*k)
+    let mut result: Vec<(char, Tag) > = table.iter()
+        .filter_map(|((k, t), ids)| {
+            if table.ids_match(ids, &pattern, WILDCARD_CHAR) {
+                Some((*k, t.clone()))
             } else {
                 None
             }
@@ -47,20 +47,21 @@ pub fn search_match(table: &IDSTable, pattern_str: &str) -> Result<Vec<char>, St
     Ok(result)
 }
 
-pub fn search_pmatch(table: &IDSTable, pattern_str: &str) -> Result<Vec<char>, String> {
+pub fn search_pmatch(table: &IDSTable, pattern_str: &str) -> Result<Vec<(char, Tag)>, String> {
     let pattern = parse(pattern_str)
         .map_err(|_| format!("Cannot parse pattern {}", pattern_str))?;
 
     let mut result: Vec<_> = table.iter()
-        .filter_map(|(k, tagged_ids)| {
-            if table.ids_has_matching_subcomponent(&tagged_ids.ids, &pattern.ids, WILDCARD_CHAR) {
-                Some(*k)
+        .filter_map(|((k, t), ids)| {
+            if table.ids_has_matching_subcomponent(&ids, &pattern, WILDCARD_CHAR) {
+                Some((*k, t.clone()))
             } else {
                 None
             }
         })
         .collect();
     result.sort();
+    result.dedup();
     Ok(result)
 }
 
@@ -91,7 +92,7 @@ mod wasm {
             .collect();
 
         let result = match crate::search_find(&table, &needle_strs) {
-            Ok(chars) => chars.iter().map(|c| c.to_string()).collect(),
+            Ok(tchars) => tchars.iter().map(|(c, t)| format!("{}{}", c, t)).collect(),
             Err(e) => vec![format!("Error: {}", e)],
         };
 
@@ -103,7 +104,7 @@ mod wasm {
         let table = get_table();
 
         let result = match crate::search_match(&table, &pattern) {
-            Ok(chars) => chars.iter().map(|c| c.to_string()).collect(),
+            Ok(tchars) => tchars.iter().map(|(c, t)| format!("{}{}", c, t)).collect(),
             Err(e) => vec![format!("Error: {}", e)],
         };
 
@@ -115,7 +116,7 @@ mod wasm {
         let table = get_table();
 
         let result = match crate::search_pmatch(&table, &pattern) {
-            Ok(chars) => chars.iter().map(|c| c.to_string()).collect(),
+            Ok(tchars) => tchars.iter().map(|(c, t)| format!("{}{}", c, t)).collect(),
             Err(e) => vec![format!("Error: {}", e)],
         };
 
