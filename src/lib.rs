@@ -91,10 +91,11 @@ mod wasm {
             .map(|s| s.to_string())
             .collect();
 
-        let result = match crate::search_find(&table, &needle_strs) {
-            Ok(tchars) => tchars.iter().map(|(c, t)| format!("{}{}", c, t)).collect(),
+        let mut result = match crate::search_find(&table, &needle_strs) {
+            Ok(tchars) => tchars.iter().map(|(c, _t)| format!("{}", c)).collect(),
             Err(e) => vec![format!("Error: {}", e)],
         };
+        result.dedup();
 
         serde_wasm_bindgen::to_value(&SearchResult { results: result }).unwrap()
     }
@@ -103,10 +104,11 @@ mod wasm {
     pub fn match_pattern(pattern: String) -> JsValue {
         let table = get_table();
 
-        let result = match crate::search_match(&table, &pattern) {
-            Ok(tchars) => tchars.iter().map(|(c, t)| format!("{}{}", c, t)).collect(),
+        let mut result = match crate::search_match(&table, &pattern) {
+            Ok(tchars) => tchars.iter().map(|(c, _t)| format!("{}", c)).collect(),
             Err(e) => vec![format!("Error: {}", e)],
         };
+        result.dedup();
 
         serde_wasm_bindgen::to_value(&SearchResult { results: result }).unwrap()
     }
@@ -115,10 +117,11 @@ mod wasm {
     pub fn pmatch(pattern: String) -> JsValue {
         let table = get_table();
 
-        let result = match crate::search_pmatch(&table, &pattern) {
-            Ok(tchars) => tchars.iter().map(|(c, t)| format!("{}{}", c, t)).collect(),
+        let mut result = match crate::search_pmatch(&table, &pattern) {
+            Ok(tchars) => tchars.iter().map(|(c, _t)| format!("{}", c)).collect(),
             Err(e) => vec![format!("Error: {}", e)],
         };
+        result.dedup();
 
         serde_wasm_bindgen::to_value(&SearchResult { results: result }).unwrap()
     }

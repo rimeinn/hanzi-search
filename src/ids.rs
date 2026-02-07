@@ -416,7 +416,7 @@ mod tests {
         let input = "啊";
         let (_, ids) = parser_tagged_ids(input).unwrap();
         assert_eq!(ids, TaggedIDS {
-            tag: "".to_string(),
+            tag: Tag::Variant("".to_string()),
             ids: IDS::Char('啊'),
         });
     }
@@ -433,7 +433,7 @@ mod tests {
                     IDS::Special("⻞下".to_string()),
                 ],
             },
-            tag: "G".to_string()
+            tag: Tag::Variant("G".to_string())
         });
     }
 }
