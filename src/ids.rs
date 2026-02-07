@@ -208,7 +208,9 @@ impl IDSTable {
                 for k_tag in k_tags {
                     if let Some(k_components) = self.table.get(&(*k, k_tag.clone())) {
                         if k_components != &IDS::Char(*k) {
-                            return self.ids_match(k_components, b, wildcard_k);
+                            if self.ids_match(k_components, b, wildcard_k) {
+                                return true;
+                            }
                         }
                     }
                 }
@@ -255,21 +257,19 @@ impl IDSTable {
             (_, Char(b)) if b == &wildcard_k => true,
             (Special(a), Special(b)) => a == b,
             (Special(_), _) => false,
-            (Char(a), Char(b)) => a == b,
-            (Char(_), Special(_)) => false,
-            (Char(a), Composition { .. }) => {
-                let Some(a_tags) = self.tags.get(a) else {
-                    return false;
-                };
-                for a_tag in a_tags {
-                    if let Some(a_components) = self.table.get(&(*a, a_tag.clone())) {
-                        if a_components != &IDS::Char(*a) {
-                            return self.ids_has_matching_subcomponent(a_components, b, wildcard_k);
-                        }
+            (Char(ka), _) => {
+                if let Char(kb) = b {
+                    if ka == kb {
+                        return true;
+                    }
+                }
+                for asub in self.expand_char(*ka) {
+                    if self.ids_has_matching_subcomponent(&asub.ids, b, wildcard_k) {
+                        return true;
                     }
                 }
                 false
-            }
+            },
             (Composition { children: xs, .. }, b) => {
                 for x in xs {
                     if self.ids_has_matching_subcomponent(x, b, wildcard_k) {
@@ -279,6 +279,24 @@ impl IDSTable {
                 false
             }
         }
+    }
+
+    fn expand_char(&self, k: char) -> Vec<TaggedIDS> {
+        let Some(tags) = self.tags.get(&k) else {
+            return vec![];
+        };
+        let mut result = vec![];
+        for tag in tags {
+            if let Some(components) = self.table.get(&(k, tag.clone())) {
+                if components != &IDS::Char(k) {
+                    result.push(TaggedIDS {
+                        tag: tag.clone(),
+                        ids: components.clone(),
+                    });
+                }
+            }
+        }
+        result
     }
 
     pub fn ids_has_subcomponent(&self, haystack: &IDS, needle: &IDS) -> bool {
