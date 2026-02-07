@@ -9,6 +9,13 @@ use log::{warn, debug};
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct IDC(char);
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Direction {
+    Vert,
+    Hort,
+    Other,
+}
+
 const ENCODED_IDC: &str = "⿰⿱⿲⿳⿴⿵⿶⿷⿸⿹⿺⿻⿼⿽⿾⿿㇯";
 
 fn idc_arity(c: char) -> usize {
@@ -31,6 +38,30 @@ impl IDC {
             return None;
         }
     }
+
+    pub fn arity(self) -> usize {
+        idc_arity(self.0)
+    }
+
+    pub fn reduce(self) -> Option<IDC> {
+        match self {
+            IDC('⿲') => Some(IDC('⿰')),
+            IDC('⿳') => Some(IDC('⿱')),
+            _ => None,
+        }
+    }
+
+    pub fn direction(self) -> Direction {
+        match self.0 {
+            '⿰' | '⿲' => Direction::Hort,
+            '⿱' | '⿳' => Direction::Vert,
+            _ => Direction::Other,
+        }
+    }
+
+    pub fn is_same_direction(self, other: IDC) -> bool {
+        return self.direction() == other.direction()
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -40,6 +71,22 @@ pub enum IDS {
     Composition {
         idc: IDC,
         children: Vec<IDS>,
+    }
+}
+
+impl std::fmt::Display for IDS {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            IDS::Char(k) => write!(f, "{}", k),
+            IDS::Special(s) => write!(f, "{{{}}}", s),
+            IDS::Composition { idc, children } => {
+                write!(f, "{}", idc.0)?;
+                for c in children {
+                    write!(f, "{}", c)?;
+                }
+                Ok(())
+            }
+        }
     }
 }
 
@@ -104,15 +151,44 @@ impl IDSTable {
     pub fn ids_match(&self, a: &IDS, b: &IDS, wildcard_k: char) -> bool {
         use IDS::*;
         match (a, b) {
+            (Char(a), _) if a == &wildcard_k => true,
+            (_, Char(b)) if b == &wildcard_k => true,
             (Special(a), Special(b)) => a == b,
-            (Char(a), Char(b)) => a == &wildcard_k || b == &wildcard_k || a == b,
-            (Composition { idc: xc, children: xs, .. }, Composition { idc: yc, children: ys, .. }) if xc == yc && xs.len() == ys.len() => {
-                for (x, y) in xs.iter().zip(ys.iter())  {
-                    if !self.ids_match(x, y, '.') {
-                        return false;
+            (Char(a), Char(b)) => a == b,
+            (Char(k), Composition { .. }) => {
+                if let Some(k_components) = self.table.get(k) {
+                    if k_components.ids != IDS::Char(*k) {
+                        return self.ids_match(&k_components.ids, b, wildcard_k);
                     }
                 }
-                true
+                false
+            }
+            (Composition { .. }, Char(_)) => {
+                return self.ids_match(b, a, wildcard_k);
+            }
+            (x @ Composition { idc: xc, children: xs, .. }, y @ Composition { idc: yc, children: ys, .. }) => {
+                if xc == yc {
+                    for (x, y) in xs.iter().zip(ys.iter())  {
+                        if !self.ids_match(x, y, wildcard_k) {
+                            return false;
+                        }
+                    }
+                    return true;
+                } else if xc.arity() == 3 && yc.arity() == 2 && xc.is_same_direction(*yc) {
+                    // try to match ⿳abc with ⿱de
+                    let a = xs[0].clone();
+                    let b = xs[1].clone();
+                    let c = xs[2].clone();
+                    let d = ys[0].clone();
+                    let e = ys[1].clone();
+                    let ab = Composition { idc: xc.reduce().unwrap(), children: vec![a.clone(), b.clone()] };
+                    let bc = Composition { idc: xc.reduce().unwrap(), children: vec![b.clone(), c.clone()] };
+                    return (self.ids_match(&ab, &d, wildcard_k) && self.ids_match(&c, &e, wildcard_k)) ||
+                        (self.ids_match(&a, &d, wildcard_k) && self.ids_match(&bc, &e, wildcard_k));
+                } else if xc.arity() == 2 && yc.arity() == 3 {
+                    return self.ids_match(y, x, wildcard_k);
+                }
+                false
             }
             _ => false,
         }
