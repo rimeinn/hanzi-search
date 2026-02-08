@@ -1,307 +1,310 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hanzi Search - WASM Demo</title>
-    <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
+<html lang="zh">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Hanzi Search - WASM Demo</title>
+        <style>
+         * {
+             box-sizing: border-box;
+             margin: 0;
+             padding: 0;
+         }
 
-        body {
-            font-family:
-                -apple-system,
-                BlinkMacSystemFont,
-                'Segoe UI',
-                Roboto,
-                'Helvetica Neue',
-                Arial,
-                'Plangothic P1',
-                'Plangothic P2',
-                '遍黑体P1',
-                '遍黑体P2',
-                'TH-Tshyn-P0',
-                'TH-Sy-P0',
-                'TH-Sy-P16',
-                'TH-Feon',
-                sans-serif;
-            padding: 20px;
-            max-width: 1200px;
-            margin: 0 auto;
-            background: #f5f5f5;
-        }
+         body {
+             font-family:
+                 -apple-system,
+                 BlinkMacSystemFont,
+                 'Segoe UI',
+                 Roboto,
+                 'Helvetica Neue',
+                 Arial,,
+                 sans-serif
+             'Plangothic P1',
+             'Plangothic P2',
+             '遍黑体P1',
+             '遍黑体P2',
+             'TH-Tshyn-P0',
+             'TH-Sy-P0',
+             'TH-Sy-P16',
+             'TH-Feon';
+             padding: 20px;
+             max-width: 1200px;
+             margin: 0 auto;
+             background: #f5f5f5;
+         }
 
-        h1 {
-            color: #333;
-            margin-bottom: 10px;
-        }
+         h1 {
+             color: #333;
+             margin-bottom: 10px;
+         }
 
-        .subtitle {
-            color: #666;
-            margin-bottom: 30px;
-            font-size: 14px;
-        }
+         .subtitle {
+             color: #666;
+             margin-bottom: 30px;
+             font-size: 14px;
+         }
 
-        .search-section {
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
+         .search-section {
+             background: white;
+             padding: 20px;
+             border-radius: 8px;
+             margin-bottom: 20px;
+             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+         }
 
-        .search-section h2 {
-            color: #444;
-            margin-bottom: 15px;
-            font-size: 18px;
-        }
+         .search-section h2 {
+             color: #444;
+             margin-bottom: 15px;
+             font-size: 18px;
+         }
 
-        .search-section p {
-            color: #666;
-            margin-bottom: 15px;
-            font-size: 14px;
-            line-height: 1.5;
-        }
+         .search-section p {
+             color: #666;
+             margin-bottom: 15px;
+             font-size: 14px;
+             line-height: 1.5;
+         }
 
-        .input-group {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
-        }
+         .input-group {
+             display: flex;
+             gap: 10px;
+             margin-bottom: 15px;
+         }
 
-        input {
-            flex: 1;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 16px;
-        }
+         input {
+             flex: 1;
+             padding: 10px;
+             border: 1px solid #ddd;
+             border-radius: 4px;
+             font-size: 16px;
+         }
 
-        button {
-            padding: 10px 20px;
-            background: #007bff;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 16px;
-            transition: background 0.2s;
-        }
+         button {
+             padding: 10px 20px;
+             background: #007bff;
+             color: white;
+             border: none;
+             border-radius: 4px;
+             cursor: pointer;
+             font-size: 16px;
+             transition: background 0.2s;
+         }
 
-        button:hover {
-            background: #0056b3;
-        }
+         button:hover {
+             background: #0056b3;
+         }
 
-        button:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-        }
+         button:disabled {
+             background: #ccc;
+             cursor: not-allowed;
+         }
 
-        .results {
-            background: #f9f9f9;
-            padding: 15px;
-            border-radius: 4px;
-            border: 1px solid #e0e0e0;
-            min-height: 100px;
-            max-height: 400px;
-            overflow-y: auto;
-        }
+         .results {
+             background: #f9f9f9;
+             padding: 15px;
+             border-radius: 4px;
+             border: 1px solid #e0e0e0;
+             min-height: 100px;
+             max-height: 400px;
+             overflow-y: auto;
+         }
 
-        .results-title {
-            font-weight: bold;
-            margin-bottom: 10px;
-            color: #333;
-        }
+         .results-title {
+             font-weight: bold;
+             margin-bottom: 10px;
+             color: #333;
+         }
 
-        .results-content {
-            font-size: 24px;
-            line-height: 1.8;
-            color: #333;
-            word-wrap: break-word;
-        }
+         .results-content {
+             font-size: 24px;
+             line-height: 1.8;
+             color: #333;
+             word-wrap: break-word;
+         }
 
-        .error {
-            color: #d32f2f;
-            font-size: 14px;
-        }
+         .error {
+             color: #d32f2f;
+             font-size: 14px;
+         }
 
-        .count {
-            color: #666;
-            font-size: 14px;
-            margin-top: 10px;
-        }
+         .count {
+             color: #666;
+             font-size: 14px;
+             margin-top: 10px;
+         }
 
-        .example {
-            background: #e3f2fd;
-            padding: 8px 12px;
-            border-radius: 4px;
-            margin-top: 10px;
-            font-size: 13px;
-            color: #1565c0;
-        }
+         .example {
+             background: #e3f2fd;
+             padding: 8px 12px;
+             border-radius: 4px;
+             margin-top: 10px;
+             font-size: 13px;
+             color: #1565c0;
+         }
 
-        .example code {
-            background: white;
-            padding: 2px 6px;
-            border-radius: 3px;
-            font-family: 'Courier New', monospace;
-        }
+         .example code {
+             background: white;
+             padding: 2px 6px;
+             border-radius: 3px;
+             font-family: 'Courier New', monospace;
+         }
 
-        .loading {
-            text-align: center;
-            padding: 40px;
-            color: #666;
-        }
-    </style>
-</head>
-<body>
-    <h1>漢字搜索 (Hanzi Search)</h1>
-    <p class="subtitle">WebAssembly-powered Chinese character search by components and patterns</p>
+         .loading {
+             text-align: center;
+             padding: 40px;
+             color: #666;
+         }
+        </style>
+    </head>
+    <body>
+        <h1>漢字搜索 (Hanzi Search)</h1>
+        <p class="subtitle">WebAssembly-powered Chinese character search by components and patterns</p>
 
-    <div id="loading" class="loading">Loading WASM module...</div>
+        <div id="loading" class="loading">Loading WASM module...</div>
 
-    <div id="app" style="display: none;">
-        <div class="search-section">
-            <h2>Find (簡單搜尋)</h2>
-            <p>Search for characters containing all specified components. Enter one or more components separated by spaces.</p>
-            <div class="input-group">
-                <input type="text" id="findInput" placeholder="Enter components (e.g., 號 食 or ⿰号虎 食)">
-                <button onclick="searchFind()">Search</button>
+        <div id="app" style="display: none;">
+            <div class="search-section">
+                <h2>Find 簡單搜尋</h2>
+                <p>搜索含有特定組件的所有字，多個組件用空格分隔。</p>
+                <p>Search for characters containing all specified components. Enter one or more components separated by spaces.</p>
+                <div class="input-group">
+                    <input type="text" id="findInput" placeholder="Enter components (e.g., 號 食 or ⿰号虎 食)">
+                    <button onclick="searchFind()">Search</button>
+                </div>
+                <div class="example">
+                    Example: <code>號 食</code>
+                </div>
+                <div id="findResults" class="results" style="display: none;">
+                    <div class="results-title">Results:</div>
+                    <div id="findResultsContent" class="results-content"></div>
+                    <div id="findCount" class="count"></div>
+                </div>
             </div>
-            <div class="example">
-                Example: <code>號 食</code> finds all characters containing both 號 and 食
+
+            <div class="search-section">
+                <h2>Match 全字模式匹配</h2>
+                <p>列出完整匹配 IDS 模式的字，使用 <code>.</code> 匹配任意組件。</p>
+                <p>Match characters using IDS patterns with wildcards. Use <code>.</code> to match any component.</p>
+                <div class="input-group">
+                    <input type="text" id="matchInput" placeholder="Enter IDS pattern (e.g., ⿲吕.吕)">
+                    <button onclick="searchMatch()">Search</button>
+                </div>
+                <div class="example">
+                    Example: <code>⿲吕.吕</code>
+                </div>
+                <div id="matchResults" class="results" style="display: none;">
+                    <div class="results-title">Results:</div>
+                    <div id="matchResultsContent" class="results-content"></div>
+                    <div id="matchCount" class="count"></div>
+                </div>
             </div>
-            <div id="findResults" class="results" style="display: none;">
-                <div class="results-title">Results:</div>
-                <div id="findResultsContent" class="results-content"></div>
-                <div id="findCount" class="count"></div>
+
+            <div class="search-section">
+                <h2>Pmatch 部分模式匹配</h2>
+                <p>列出所有含有 IDS 模式的字。使用 <code>.</code> 匹配任意組件。</p>
+                <p>Match patterns within character subcomponents. Use <code>.</code> to match any component in the pattern.</p>
+                <div class="input-group">
+                    <input type="text" id="pmatchInput" placeholder="Enter IDS pattern (e.g., ⿲木.木)">
+                    <button onclick="searchPmatch()">Search</button>
+                </div>
+                <div class="example">
+                    Example: <code>⿲木.木</code>
+                </div>
+                <div id="pmatchResults" class="results" style="display: none;">
+                    <div class="results-title">Results:</div>
+                    <div id="pmatchResultsContent" class="results-content"></div>
+                    <div id="pmatchCount" class="count"></div>
+                </div>
             </div>
         </div>
 
-        <div class="search-section">
-            <h2>Match (全字模式匹配)</h2>
-            <p>Match characters using IDS patterns with wildcards. Use <code>.</code> to match any character.</p>
-            <div class="input-group">
-                <input type="text" id="matchInput" placeholder="Enter IDS pattern (e.g., ⿲吕.吕)">
-                <button onclick="searchMatch()">Search</button>
-            </div>
-            <div class="example">
-                Example: <code>⿲吕.吕</code> matches characters with the structure of three components: 吕, any character, 吕
-            </div>
-            <div id="matchResults" class="results" style="display: none;">
-                <div class="results-title">Results:</div>
-                <div id="matchResultsContent" class="results-content"></div>
-                <div id="matchCount" class="count"></div>
-            </div>
-        </div>
+        <script type="module">
+         import init, { find, match_pattern, pmatch } from './pkg/hanzi_search.js';
 
-        <div class="search-section">
-            <h2>Pmatch (部分模式匹配)</h2>
-            <p>Match patterns within character subcomponents. Use <code>.</code> to match any character in the pattern.</p>
-            <div class="input-group">
-                <input type="text" id="pmatchInput" placeholder="Enter IDS pattern (e.g., ⿲木.木)">
-                <button onclick="searchPmatch()">Search</button>
-            </div>
-            <div class="example">
-                Example: <code>⿲木.木</code> finds characters containing a subcomponent with three parts: 木, any character, 木
-            </div>
-            <div id="pmatchResults" class="results" style="display: none;">
-                <div class="results-title">Results:</div>
-                <div id="pmatchResultsContent" class="results-content"></div>
-                <div id="pmatchCount" class="count"></div>
-            </div>
-        </div>
-    </div>
+         async function loadWasm() {
+             try {
+                 await init();
+                 document.getElementById('loading').style.display = 'none';
+                 document.getElementById('app').style.display = 'block';
+                 console.log('WASM module loaded successfully');
+             } catch (error) {
+                 document.getElementById('loading').innerHTML =
+                     '<div class="error">Error loading WASM module: ' + error.message + '</div>';
+                 console.error('Failed to load WASM:', error);
+             }
+         }
 
-    <script type="module">
-        import init, { find, match_pattern, pmatch } from './pkg/hanzi_search.js';
+         window.searchFind = function() {
+             const input = document.getElementById('findInput').value.trim();
+             if (!input) return;
 
-        async function loadWasm() {
-            try {
-                await init();
-                document.getElementById('loading').style.display = 'none';
-                document.getElementById('app').style.display = 'block';
-                console.log('WASM module loaded successfully');
-            } catch (error) {
-                document.getElementById('loading').innerHTML =
-                    '<div class="error">Error loading WASM module: ' + error.message + '</div>';
-                console.error('Failed to load WASM:', error);
-            }
-        }
+             try {
+                 const result = find(input);
+                 displayResults('find', result.results);
+             } catch (error) {
+                 displayResults('find', ['Error: ' + error.message]);
+             }
+         };
 
-        window.searchFind = function() {
-            const input = document.getElementById('findInput').value.trim();
-            if (!input) return;
+         window.searchMatch = function() {
+             const input = document.getElementById('matchInput').value.trim();
+             if (!input) return;
 
-            try {
-                const result = find(input);
-                displayResults('find', result.results);
-            } catch (error) {
-                displayResults('find', ['Error: ' + error.message]);
-            }
-        };
+             try {
+                 const result = match_pattern(input);
+                 displayResults('match', result.results);
+             } catch (error) {
+                 displayResults('match', ['Error: ' + error.message]);
+             }
+         };
 
-        window.searchMatch = function() {
-            const input = document.getElementById('matchInput').value.trim();
-            if (!input) return;
+         window.searchPmatch = function() {
+             const input = document.getElementById('pmatchInput').value.trim();
+             if (!input) return;
 
-            try {
-                const result = match_pattern(input);
-                displayResults('match', result.results);
-            } catch (error) {
-                displayResults('match', ['Error: ' + error.message]);
-            }
-        };
+             try {
+                 const result = pmatch(input);
+                 displayResults('pmatch', result.results);
+             } catch (error) {
+                 displayResults('pmatch', ['Error: ' + error.message]);
+             }
+         };
 
-        window.searchPmatch = function() {
-            const input = document.getElementById('pmatchInput').value.trim();
-            if (!input) return;
+         function displayResults(type, results) {
+             const resultsDiv = document.getElementById(type + 'Results');
+             const contentDiv = document.getElementById(type + 'ResultsContent');
+             const countDiv = document.getElementById(type + 'Count');
 
-            try {
-                const result = pmatch(input);
-                displayResults('pmatch', result.results);
-            } catch (error) {
-                displayResults('pmatch', ['Error: ' + error.message]);
-            }
-        };
+             resultsDiv.style.display = 'block';
 
-        function displayResults(type, results) {
-            const resultsDiv = document.getElementById(type + 'Results');
-            const contentDiv = document.getElementById(type + 'ResultsContent');
-            const countDiv = document.getElementById(type + 'Count');
+             if (results.length === 0) {
+                 contentDiv.innerHTML = '<div style="color: #999;">No results found</div>';
+                 countDiv.textContent = '';
+             } else if (results[0].startsWith('Error:')) {
+                 contentDiv.innerHTML = '<div class="error">' + results[0] + '</div>';
+                 countDiv.textContent = '';
+             } else {
+                 // Join all characters with spaces for better readability
+                 contentDiv.textContent = results.join(' ');
+                 countDiv.textContent = `Found ${results.length} character${results.length !== 1 ? 's' : ''}`;
+             }
+         }
 
-            resultsDiv.style.display = 'block';
+         // Add Enter key support
+         document.addEventListener('DOMContentLoaded', () => {
+             document.getElementById('findInput').addEventListener('keypress', (e) => {
+                 if (e.key === 'Enter') searchFind();
+             });
+             document.getElementById('matchInput').addEventListener('keypress', (e) => {
+                 if (e.key === 'Enter') searchMatch();
+             });
+             document.getElementById('pmatchInput').addEventListener('keypress', (e) => {
+                 if (e.key === 'Enter') searchPmatch();
+             });
+         });
 
-            if (results.length === 0) {
-                contentDiv.innerHTML = '<div style="color: #999;">No results found</div>';
-                countDiv.textContent = '';
-            } else if (results[0].startsWith('Error:')) {
-                contentDiv.innerHTML = '<div class="error">' + results[0] + '</div>';
-                countDiv.textContent = '';
-            } else {
-                // Join all characters with spaces for better readability
-                contentDiv.textContent = results.join(' ');
-                countDiv.textContent = `Found ${results.length} character${results.length !== 1 ? 's' : ''}`;
-            }
-        }
-
-        // Add Enter key support
-        document.addEventListener('DOMContentLoaded', () => {
-            document.getElementById('findInput').addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') searchFind();
-            });
-            document.getElementById('matchInput').addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') searchMatch();
-            });
-            document.getElementById('pmatchInput').addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') searchPmatch();
-            });
-        });
-
-        loadWasm();
-    </script>
-</body>
+         loadWasm();
+        </script>
+    </body>
 </html>
