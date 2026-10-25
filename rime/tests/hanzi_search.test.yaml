@@ -1,0 +1,140 @@
+schema: moran
+source_dir: ../../moran-dist
+script: |
+  function has(text)
+    for _, c in ipairs(cand) do if c.text == text then return true end end
+    return false
+  end
+  function remember_results()
+    wood_results = {}
+    for _, c in ipairs(cand) do wood_results[#wood_results + 1] = c.text end
+    return #wood_results > 0 and commit == nil
+  end
+  function same_results()
+    local texts = {}
+    for _, c in ipairs(cand) do texts[#texts + 1] = c.text end
+    return table.concat(texts) == table.concat(wood_results) and commit == nil
+  end
+  function remember_second()
+    second_component = cand[2].text
+    return commit == nil
+  end
+deploy:
+  search:
+    patch:
+      __include: hanzi_search_moran.custom:/patch
+      engine/processors/@before 0: lua_processor@*hanzi_search_driver
+    options:
+      extended_charset: true
+    tests:
+      - send: oi
+        assert: '#cand == 0 and commit == nil'
+      - send: oimu
+        assert: 'has("木") and commit == nil'
+      - send: oimu{space}
+        assert: '#cand > 0 and preedit:find("木", 1, true) and commit == nil'
+      - send: oimu{space}mu
+        assert: 'has("木") and commit == nil'
+      - send: oimu{space}{Escape}
+        assert: '#cand == 0 and commit == nil'
+      - send: oimu{space}{BackSpace}
+        assert: 'has("木") and commit == nil'
+      - send: l
+        assert: 'cand[1].text == "了" and commit == nil'
+      - send: oihkh
+        assert: 'cand[1].text == "號" and commit == nil'
+      - send: oihkh{space}uirl
+        assert: 'cand[1].text == "食" and commit == nil'
+      - send: oihkh{space}uirl{space}
+        assert: '#cand == 1 and cand[1].text == "饕" and commit == nil'
+      - send: oihkh{space}uirl{space}{space}
+        assert: 'commit == "饕" and #cand == 0'
+      - send: oihkh{Return}uirl{Return}{Return}
+        assert: 'commit == "饕" and #cand == 0'
+      - send: oihkh1uirl11
+        assert: 'commit == "饕" and #cand == 0'
+      - send: oihkh{F8}uirl{F8}{F7}
+        assert: 'commit == nil and #cand == 1 and cand[1].text == "饕"'
+      - send: oihkh{F8}uirl{F8}{F8}
+        assert: 'commit == "饕" and #cand == 0'
+      - send: oihkh{space}uirl{space}{BackSpace}{F7}
+        assert: 'commit == nil and cand[1].text == "食"'
+      - send: oihkh{space}uirl{space}{BackSpace}{space}{space}l
+        assert: 'commit == "饕" and cand[1].text == "了"'
+      - send: oi{Return}
+        assert: 'commit == nil and #cand == 0'
+      - send: oihkh{space}{Escape}l{space}
+        assert: 'commit == "了" and #cand == 0'
+      - send: oi{BackSpace}{BackSpace}l
+        assert: 'commit == nil and cand[1].text == "了"'
+      - send: oihkhx{BackSpace}
+        assert: 'commit == nil and cand[1].text == "號"'
+      - send: oihkh{space}uirl{space}huh{space}{F7}
+        assert: 'commit == nil and #cand == 1 and cand[1].text == "饕"'
+      - send: oihkh{space}uirl{space}huh{space}{space}
+        assert: 'commit == "饕" and #cand == 0'
+      - send: oihkh{space}uirl{space}uv{space}{Return}
+        assert: 'commit == nil and #cand == 0'
+      - send: oihkh{space}uirl{space}{Escape}oihkh{space}uirl{space}{space}
+        assert: 'commit == "饕" and #cand == 0'
+      - send: oimu{space}
+        assert: remember_results()
+      - send: oimu{space}mu{space}{F7}
+        assert: same_results()
+      - send: oimu{space}{space}
+        assert: 'commit == wood_results[1] and #cand == 0'
+      - send: oimu
+        assert: remember_second()
+      - send: oimu2{F7}
+        assert: 'commit == nil and preedit:find(second_component, 1, true)'
+  next_component:
+    options:
+      extended_charset: true
+    tests:
+      - send: oivik{space}r
+        assert: 'commit == nil and preedit:find("知", 1, true) and not preedit:find("㲛", 1, true)'
+      - send: oivik{space}ri{space}
+        assert: 'commit == nil and cand[3].text == "智" and not preedit:find("㲛", 1, true)'
+      - send: oivik{space}ri{space}3
+        assert: 'commit == "智" and #cand == 0'
+      - send: oivik{space}r{BackSpace}r
+        assert: 'commit == nil and preedit:find("知", 1, true) and not preedit:find("㲛", 1, true)'
+  editing:
+    patch:
+      __include: hanzi_search_moran.custom:/patch
+      engine/processors/@before 0: lua_processor@*hanzi_search_driver
+    options:
+      extended_charset: true
+    tests:
+      - send: oihkh{space}uirl{space}u{BackSpace}{F7}
+        assert: 'commit == nil and #cand == 1 and cand[1].text == "饕"'
+      - send: oihkh{space}uirl{space}uv{space}{BackSpace}{BackSpace}{BackSpace}{BackSpace}{F7}
+        assert: 'commit == nil and cand[1].text == "食"'
+  custom_prefix:
+    patch:
+      __include: hanzi_search_moran.custom:/patch
+      hanzi_search/prefix: zzz
+    options:
+      extended_charset: true
+    tests:
+      - send: zzz
+        assert: 'commit == nil and #cand == 0'
+      - send: zzzhkh{space}uirl{space}{space}
+        assert: 'commit == "饕" and #cand == 0'
+      - send: zzzhkh1uirl11
+        assert: 'commit == "饕" and #cand == 0'
+      - send: zzzhkh{space}{BackSpace}
+        assert: 'commit == nil and cand[1].text == "號"'
+      - send: zzz{BackSpace}{BackSpace}{BackSpace}l
+        assert: 'commit == nil and cand[1].text == "了"'
+      - send: oihkh{space}
+        assert: 'commit ~= nil'
+  custom_data:
+    patch:
+      __include: hanzi_search_moran.custom:/patch
+      hanzi_search/data_file: lua/alternate_chai.txt
+    tests:
+      - send: oihkh{space}uirl{space}
+        assert: 'commit == nil and #cand == 1 and cand[1].text == "字"'
+      - send: oihkh{space}uirl{space}{space}
+        assert: 'commit == "字" and #cand == 0'

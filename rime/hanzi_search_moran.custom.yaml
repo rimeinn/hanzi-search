@@ -1,0 +1,7 @@
+patch:
+  hanzi_search/prefix: oi
+  hanzi_search/data_file: lua/chai.txt
+  engine/processors/@before 0: lua_processor@*hanzi_search*editor
+  engine/segmentors/@before 0: lua_segmentor@*hanzi_search*segmentor
+  engine/translators/@before 0: lua_translator@*hanzi_search*translator
+  engine/filters/@before 0: lua_filter@*hanzi_search*filter

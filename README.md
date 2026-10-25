@@ -83,6 +83,10 @@ $ cargo run -r -q -- pmatch ⿲木.木
    ```
 3. 用瀏覽器打開 http://localhost:8000
 
+### Rime / librime-lua
+
+使用 `oi` 引導的交互拆字查詢，安裝及測試方式見 [Rime 說明](rime/README.md)。
+
 ## 開發
 
 ### 構建 CLI
